@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <array>
 #include <chrono>
 #include <random>
 
@@ -13,8 +14,8 @@
 
 const int width = 2560;
 const int height = 1440;
-const unsigned int pointCount = 80'000'000;
-unsigned int batchSize = 50'000;
+const unsigned int pointCount = 67'108'864;
+const unsigned int batchSize = 16'384;
 
 GLFWwindow* Initialize(int width, int height);
 unsigned int CreateShaderProgram();
@@ -33,11 +34,15 @@ int main()
 
     glViewport(0, 0, width, height);
     glClearColor(0.f, 0.f, 0.f, 1.f);
-    
+    glEnable(GL_DEPTH_TEST);
+
     unsigned int frame = 0u;
     unsigned int offset = 0u;
+    float sum = 0.f;
     while (!glfwWindowShouldClose(window))
     {
+        glfwPollEvents();
+
         auto start = std::chrono::high_resolution_clock::now();
 
 #ifdef BATCHING_TEST
@@ -51,10 +56,8 @@ int main()
         }
 #endif // BATCHING_TEST
 
-        glfwPollEvents();
-
         //------Renderpass start------
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(program);
         glBindVertexArray(vao);
@@ -63,12 +66,14 @@ int main()
         glfwSwapBuffers(window);
         //------Renderpass end------
 
-        frame += 1u;
-
-        //This standard output also affects performance. Result tends to be better without it.
         std::chrono::duration<float, std::milli> ms = std::chrono::high_resolution_clock::now() - start;
-        std::cout << "Frame " << frame << " : " << ms.count() << "\n";
+
+        frame += 1u;
+        sum += ms.count();
     }
+
+    std::cout << sum / static_cast<float>(frame) << std::endl;
+    std::cout << frame << std::endl;
 
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
